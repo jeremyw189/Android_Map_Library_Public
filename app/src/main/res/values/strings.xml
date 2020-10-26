@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">My Map App</string>
+    <string name="title_activity_map_nav">Map Nav</string>
+    <string name="address_search_hint">Enter address</string>
+    <string name="geo_locate_error">Geocode failed on address.</string>
+    <string name="location_not_found">No location with that name: </string>
+    <string name="title_activity_navigation">NavigationActivity</string>
+    <string name="location_permission_denied">User denied permission for device location.</string>
+</resources>
