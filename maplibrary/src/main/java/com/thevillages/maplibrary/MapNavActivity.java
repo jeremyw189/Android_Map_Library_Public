@@ -371,14 +371,14 @@ public class MapNavActivity extends AppCompatActivity {
         Polyline routeGeometry = routeResult.getRoutes().get(0).getRouteGeometry();
         // for demo
         // set up a simulated location data source which simulates movement along the route
-        //SimulatedLocationDataSource mSimulatedLocationDataSource = new SimulatedLocationDataSource();
-        //SimulationParameters simulationParameters = new SimulationParameters(Calendar.getInstance(), 35, 5, 5);
-        //mSimulatedLocationDataSource.setLocations(routeGeometry, simulationParameters);
+        SimulatedLocationDataSource mSimulatedLocationDataSource = new SimulatedLocationDataSource();
+        SimulationParameters simulationParameters = new SimulationParameters(Calendar.getInstance(), 35, 5, 5);
+        mSimulatedLocationDataSource.setLocations(routeGeometry, simulationParameters);
         // create a route tracker location data source to snap the location display to the route
-        //RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mSimulatedLocationDataSource);
+        RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mSimulatedLocationDataSource);
 
         // for production use device location data source
-        RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mLocationDisplay.getLocationDataSource());
+        //RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mLocationDisplay.getLocationDataSource());
         // set the route tracker location data source as the location data source for this app
         mLocationDisplay.setLocationDataSource(routeTrackerLocationDataSource);
 

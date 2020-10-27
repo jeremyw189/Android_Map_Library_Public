@@ -61,6 +61,7 @@ public class StartActivity extends AppCompatActivity {
                 intent.setClassName(getApplicationContext(), activityClassName );
                 //cane gardens -81.992341d 28.892343d
                 // lake shore pool 28.910041, -81.971360
+                intent.putExtra("ADDRESS", "Lake Shore pool");
                 intent.putExtra("GISLONG", -81.971360d );
                 intent.putExtra("GISLAT", 28.910041d);
                 intent.putExtra("TRAVEL_TYPE", TravelType.CAR.getValue()); // 0 CAR 1 GOLF_CART
