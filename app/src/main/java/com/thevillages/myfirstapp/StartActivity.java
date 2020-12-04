@@ -30,7 +30,7 @@ public class StartActivity extends AppCompatActivity {
         setContentView(R.layout.activity_start);
 
         setLocationPremissions();
-
+        // route by car button 1
         Button searchBtn = findViewById(R.id.searchBtn);
         searchBtn.setOnClickListener(new View.OnClickListener() {
                      @Override
@@ -41,6 +41,7 @@ public class StartActivity extends AppCompatActivity {
                      }
                  });
 
+        // button 4
         Button navLibBtn = findViewById(R.id.navLibBtn);
         navLibBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -49,7 +50,7 @@ public class StartActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-
+        // button 3 goes streight to map nav in library
         Button navMapBtn = findViewById(R.id.navMapBtn);
         navMapBtn.setOnClickListener(new View.OnClickListener(){
             @Override

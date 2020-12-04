@@ -8,30 +8,25 @@ import android.os.Build;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
-import android.view.View;
-import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
-import com.esri.arcgisruntime.UnitSystem;
+import com.esri.arcgisruntime.ArcGISRuntimeEnvironment;
+import com.esri.arcgisruntime.concurrent.ListenableFuture;
+import com.esri.arcgisruntime.geometry.Envelope;
 import com.esri.arcgisruntime.geometry.GeometryEngine;
 import com.esri.arcgisruntime.geometry.ImmutablePartCollection;
 import com.esri.arcgisruntime.geometry.Point;
 import com.esri.arcgisruntime.geometry.Polyline;
 import com.esri.arcgisruntime.geometry.SpatialReferences;
-import com.esri.arcgisruntime.layers.ArcGISMapImageLayer;
-import com.esri.arcgisruntime.layers.ArcGISTiledLayer;
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.location.LocationDataSource;
 import com.esri.arcgisruntime.location.LocationDataSource.Location;
+import com.esri.arcgisruntime.location.RouteTrackerLocationDataSource;
+import com.esri.arcgisruntime.location.SimulatedLocationDataSource;
+import com.esri.arcgisruntime.location.SimulationParameters;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
+import com.esri.arcgisruntime.mapping.Viewpoint;
 import com.esri.arcgisruntime.mapping.view.Graphic;
 import com.esri.arcgisruntime.mapping.view.GraphicsOverlay;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
@@ -45,10 +40,7 @@ import com.esri.arcgisruntime.tasks.networkanalysis.RouteParameters;
 import com.esri.arcgisruntime.tasks.networkanalysis.RouteResult;
 import com.esri.arcgisruntime.tasks.networkanalysis.RouteTask;
 import com.esri.arcgisruntime.tasks.networkanalysis.Stop;
-//import com.esri.arcgisruntime.toolkit.compass.Compass;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -56,164 +48,238 @@ import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.lang.Long;
+import java.util.concurrent.ExecutionException;
 
 import static com.esri.arcgisruntime.navigation.RouteTracker.*;
 
 public class NavigationActivity extends AppCompatActivity {
-    private final String TAG = NavigationActivity.class.getSimpleName();
-    private MapView mMapView;
-    private LocationDisplay mLocationDisplay;
-    private GraphicsOverlay mGraphicsOverlay;
-    private RouteTask routeTask;
-    private RouteTracker routeTracker;
-    private RouteResult mRouteResult;
-    private  TextToSpeech textToSpeech;
+    private SimulatedLocationDataSource mSimulatedLocationDataSource;
+    private TextToSpeech mTextToSpeech;
     private boolean isTextToSpeechInitialized = false;
-    private VoiceGuidance mVoiceGuidance;
-    private double mDirection = 0.0;
-    private EditText infolbl;
-    //private Compass mCompass;
-    private int offRouteCount = 0;
+
+    private MapView mMapView;
+    private RouteTracker mRouteTracker;
+    private Graphic mRouteAheadGraphic;
+    private FloatingActionButton mRecenterButton;
+
     private NewVoiceGuidanceListener voiceGuidanceListener;
+
+    public NavigationActivity(){
+        ArcGISRuntimeEnvironment.setLicense("runtimebasic,1000,rud000252796,none,MJJ47AZ7G349NERL1216");
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_navigation);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        mMapView = findViewById(R.id.mapView);
+        ArcGISMap map = new ArcGISMap(Basemap.createOpenStreetMap());
+        mMapView.setMap(map);
 
-        infolbl = findViewById(R.id.infoText);
-
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Starting navication action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-
-                startNavigation();
+        // initialize text-to-speech to replay navigation voice guidance
+        mTextToSpeech = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.ERROR) {
+                mTextToSpeech.setLanguage(Locale.US);
+                isTextToSpeechInitialized = true;
             }
         });
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        //RouteTask routeTask = new RouteTask(this, getString(R.string.routing_service_url));
+        RouteTask routeTask = new RouteTask(this, getString(R.string.car_route_service));
 
-        try {
-            // initialize text-to-speech to replay navigation voice guidance
-            textToSpeech = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                @Override
-                public void onInit(int status) {
-                    if(status != TextToSpeech.ERROR) {
-                        textToSpeech.setLanguage(Locale.US);
-                        isTextToSpeechInitialized = true;
+        //routeTask.loadAsync();
+
+        routeTask.addDoneLoadingListener(() -> {
+
+            if (routeTask.getLoadError() == null && routeTask.getLoadStatus() == LoadStatus.LOADED) {
+
+                final ListenableFuture<RouteParameters> routeParametersFuture = routeTask.createDefaultParametersAsync();
+                routeParametersFuture.addDoneListener(() -> {
+
+                    try {
+
+                        RouteParameters routeParameters = routeParametersFuture.get();
+                        routeParameters.setStops(getStopsFirstRoute());
+                        routeParameters.setReturnDirections(true);
+                        routeParameters.setReturnStops(true);
+                        routeParameters.setReturnRoutes(true);
+                        ListenableFuture<RouteResult> routeResultFuture = routeTask.solveRouteAsync(routeParameters);
+
+                        routeParametersFuture.addDoneListener(() -> {
+
+                            try {
+
+                                RouteResult routeResult = routeResultFuture.get();
+                                Polyline routeGeometry = routeResult.getRoutes().get(0).getRouteGeometry();
+                                Graphic routeGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.RED, 5f));
+
+                                GraphicsOverlay mGraphicsOverlay = new GraphicsOverlay();
+                                mGraphicsOverlay.setOpacity((float) 0.4);
+                                mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
+                                mGraphicsOverlay.getGraphics().add(routeGraphic);
+
+                                mMapView.setViewpointAsync(new Viewpoint(routeGeometry.getExtent()));
+
+                                RouteParameters routeParameters_ = routeParametersFuture.get();
+                                routeParameters_.setStops(getStopsSecondRoute());
+                                routeParameters_.setReturnDirections(true);
+                                routeParameters_.setReturnStops(true);
+                                routeParameters_.setReturnRoutes(true);
+                                ListenableFuture<RouteResult> routeResultFuture_ = routeTask.solveRouteAsync(routeParameters_);
+
+                                routeParametersFuture.addDoneListener(() -> {
+
+                                    try {
+
+                                        RouteResult routeResult_ = routeResultFuture_.get();
+                                        Polyline routeGeometry_ = routeResult_.getRoutes().get(0).getRouteGeometry();
+                                        Graphic routeGraphic_ = new Graphic(routeGeometry_, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.GREEN, 5f));
+
+                                        mGraphicsOverlay.getGraphics().add(routeGraphic_);
+
+                                        Envelope e = com.esri.arcgisruntime.geometry.GeometryEngine.combineExtents(routeGraphic.getGeometry(), routeGraphic_.getGeometry());
+                                        mMapView.setViewpointGeometryAsync(e, 30);
+
+                                        FloatingActionButton navigateRouteButton = findViewById(R.id.navigateRouteButton);
+                                        navigateRouteButton.setOnClickListener(v -> startNavigation(routeTask, routeResult, routeParameters, routeResult_, routeParameters_));
+
+                                    } catch (ExecutionException | InterruptedException e) {
+                                        String error = "Error creating default route parameters: " + e.getMessage();
+                                        Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                                        Log.e("case02665010", error);
+                                    }
+
+                                });
+
+                            } catch (ExecutionException | InterruptedException e) {
+                                String error = "Error creating default route parameters: " + e.getMessage();
+                                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                                Log.e("case02665010", error);
+                            }
+
+                        });
+
+                    } catch (ExecutionException | InterruptedException e) {
+                        String error = "Error creating default route parameters: " + e.getMessage();
+                        Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                        Log.e("case02665010", error);
                     }
-                }
-            });
 
-            //set up mapview
-            mMapView = findViewById(R.id.mapNavView1);
-            String  mapService = "https://arc7.thevillages.com/arcgis/rest/services/PUBLICMAP26/MapServer/";
+                });
 
-            String basemap = "http://services.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer";
 
-            ArcGISTiledLayer layer = new ArcGISTiledLayer(basemap);
-            ArcGISTiledLayer layer2 = new ArcGISTiledLayer(mapService);
-            ArcGISMapImageLayer censusLayer = new ArcGISMapImageLayer("http://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer");
+            }
 
-            //Basemap map =  new Basemap(layer);
-            ArcGISMap map = new ArcGISMap();
-            map.getBasemap().getBaseLayers().add(layer2);
-            //map.getBasemap().getBaseLayers().add(censusLayer);
-            mMapView.setMap(map);
-            mGraphicsOverlay = new  GraphicsOverlay();
-            mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
+        });
 
-            // throws an error on rotation
-            //mCompass = findViewById(R.id.compass); // new Compass(mMapView.getContext());
-            //mCompass.setAutoHide(false);
-            //mCompass.addToGeoView(mMapView); // use with new compass
-            //mCompass.bindTo(mMapView);;
+        mRecenterButton = findViewById(R.id.recenterButton);
+        mRecenterButton.setEnabled(false);
+        mRecenterButton.setOnClickListener(v -> {
+            mMapView.getLocationDisplay().setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
+            mRecenterButton.setEnabled(false);
+        });
 
-            // generate route with direction and stops for navigation
-            String routeUrl = getResources().getString(R.string.car_route_service );
-            routeTask = new RouteTask(this, routeUrl);
-
-            setupLocationDisplay();
-
-        } catch (Exception ex) {
-            Toast.makeText(this, "Navigation initialization failed: " + ex.getMessage(), Toast.LENGTH_LONG).show();
-            Log.e(TAG, ex.getMessage());
-        }
-
-       // add mapview navagation change handler
 
     } // end onCreate
 
-    private void setupLocationDisplay() {
-        mLocationDisplay = mMapView.getLocationDisplay();
+//    private void setupLocationDisplay() {
+//        mLocationDisplay = mMapView.getLocationDisplay();
+//
+//        mLocationDisplay.addDataSourceStatusChangedListener(dataSourceStatusChangedEvent -> {
+//
+//            if (dataSourceStatusChangedEvent.isStarted() || dataSourceStatusChangedEvent.getError() == null) {
+//                LocationDataSource lds = mLocationDisplay.getLocationDataSource();
+//                lds.addHeadingChangedListener(headingChangedEvent -> {
+//
+//                        double head = headingChangedEvent.getHeading();
+//                        Log.d(TAG, "my heading is " + head);
+//
+//                        double course = mLocationDisplay.getLocation().getCourse();
+//                        String h = "My heading : " + Math.round(head) + " Course: " + course;
+//                        infolbl.setText(h);
+//
+//                        //View contextView = findViewById(R.id.fab);
+//                        //Snackbar.make(contextView, "My heading : " + head, Snackbar.LENGTH_LONG)
+//                        //       .setAction("Action", null).show();
+//
+//                });
+//                return;
+//            }
+//
+//            int requestPermissionsCode = 2;
+//            String[] requestPermissions = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+//
+//            if (!(ContextCompat.checkSelfPermission(NavigationActivity.this, requestPermissions[0]) == PackageManager.PERMISSION_GRANTED
+//                    && ContextCompat.checkSelfPermission(NavigationActivity.this, requestPermissions[1]) == PackageManager.PERMISSION_GRANTED)) {
+//                ActivityCompat.requestPermissions(NavigationActivity.this, requestPermissions, requestPermissionsCode);
+//            } else {
+//                String message = String.format("Error in DataSourceStatusChangedListener: %s",
+//                        dataSourceStatusChangedEvent.getSource().getLocationDataSource().getError().getMessage());
+//                Toast.makeText(NavigationActivity.this, message, Toast.LENGTH_LONG).show();
+//            }
+//        });
+//
+//        mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.COMPASS_NAVIGATION);
+//
+//        mLocationDisplay.startAsync();
+//
+//    }
 
-        mLocationDisplay.addDataSourceStatusChangedListener(dataSourceStatusChangedEvent -> {
+//    private void speakNavigationInstructions() {
+//        if (isTextToSpeechInitialized && !textToSpeech.isSpeaking()) {
+//            VoiceGuidance voiceGuidance = routeTracker.generateVoiceGuidance();
+//
+//            if (voiceGuidance == null){
+//                return;
+//            }
+//            if (mVoiceGuidance != null)
+//                if ( voiceGuidance.getText().equals(mVoiceGuidance.getText())) {
+//                    return;
+//                }
+//
+//            mVoiceGuidance = voiceGuidance;
+//            Log.d(TAG, voiceGuidance.getText());
+//            infolbl.setText(voiceGuidance.getText(), TextView.BufferType.NORMAL);
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                textToSpeech.speak(voiceGuidance.getText(), TextToSpeech.QUEUE_FLUSH, null, null);
+//            } else {
+//                textToSpeech.speak(voiceGuidance.getText(), TextToSpeech.QUEUE_FLUSH, null);
+//            }
+//
+//        }
+//    }
 
-            if (dataSourceStatusChangedEvent.isStarted() || dataSourceStatusChangedEvent.getError() == null) {
-                LocationDataSource lds = mLocationDisplay.getLocationDataSource();
-                lds.addHeadingChangedListener(headingChangedEvent -> {
 
-                        double head = headingChangedEvent.getHeading();
-                        Log.d(TAG, "my heading is " + head);
+    private void startNavigation(RouteTask routeTask, RouteResult firstRouteResult, RouteParameters firstRouteParameters, RouteResult secondRouteResult, RouteParameters secondRouteParameters) {
 
-                        double course = mLocationDisplay.getLocation().getCourse();
-                        String h = "My heading : " + Math.round(head) + " Course: " + course;
-                        infolbl.setText(h);
+        mRouteAheadGraphic = new Graphic(firstRouteResult.getRoutes().get(0).getRouteGeometry(),
+                new SimpleLineSymbol(SimpleLineSymbol.Style.DASH, Color.YELLOW, 5f));
 
-                        //View contextView = findViewById(R.id.fab);
-                        //Snackbar.make(contextView, "My heading : " + head, Snackbar.LENGTH_LONG)
-                        //       .setAction("Action", null).show();
+        GraphicsOverlay mGraphicsOverlay = new GraphicsOverlay();
+        mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
+        mGraphicsOverlay.getGraphics().add(mRouteAheadGraphic);
 
-                });
-                return;
-            }
+        LocationDisplay locationDisplay = mMapView.getLocationDisplay();
 
-            int requestPermissionsCode = 2;
-            String[] requestPermissions = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+        mSimulatedLocationDataSource = new SimulatedLocationDataSource();
+        SimulationParameters simulationParameters_ = new SimulationParameters(Calendar.getInstance(), 35, 5, 5);
+        mSimulatedLocationDataSource.setLocations(firstRouteResult.getRoutes().get(0).getRouteGeometry(), simulationParameters_);
 
-            if (!(ContextCompat.checkSelfPermission(NavigationActivity.this, requestPermissions[0]) == PackageManager.PERMISSION_GRANTED
-                    && ContextCompat.checkSelfPermission(NavigationActivity.this, requestPermissions[1]) == PackageManager.PERMISSION_GRANTED)) {
-                ActivityCompat.requestPermissions(NavigationActivity.this, requestPermissions, requestPermissionsCode);
-            } else {
-                String message = String.format("Error in DataSourceStatusChangedListener: %s",
-                        dataSourceStatusChangedEvent.getSource().getLocationDataSource().getError().getMessage());
-                Toast.makeText(NavigationActivity.this, message, Toast.LENGTH_LONG).show();
-            }
+        mRouteTracker = new RouteTracker(getApplicationContext(), secondRouteResult, 0, true);
+        mRouteTracker.enableReroutingAsync(routeTask, secondRouteParameters, RouteTracker.ReroutingStrategy.TO_NEXT_WAYPOINT, true);
+        RouteTrackerLocationDataSource routeTrackerLocationDataSource_ = new RouteTrackerLocationDataSource(mRouteTracker, mSimulatedLocationDataSource);
+        locationDisplay.setLocationDataSource(routeTrackerLocationDataSource_);
+        locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
+        locationDisplay.addAutoPanModeChangedListener(autoPanModeChangedEvent -> mRecenterButton.setEnabled(true));
+
+        locationDisplay.addLocationChangedListener(locationChangedEvent -> {
+            TrackingStatus trackingStatus = mRouteTracker.getTrackingStatus();
+            mRouteAheadGraphic.setGeometry(trackingStatus.getRouteProgress().getRemainingGeometry());
         });
 
-        mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.COMPASS_NAVIGATION);
+        locationDisplay.startAsync();
+        //Toast.makeText(this, "Navigating...", Toast.LENGTH_LONG).show();
 
-        mLocationDisplay.startAsync();
-
-    }
-
-    private void speakNavigationInstructions() {
-        if (isTextToSpeechInitialized && !textToSpeech.isSpeaking()) {
-            VoiceGuidance voiceGuidance = routeTracker.generateVoiceGuidance();
-
-            if (voiceGuidance == null){
-                return;
-            }
-            if (mVoiceGuidance != null)
-                if ( voiceGuidance.getText().equals(mVoiceGuidance.getText())) {
-                    return;
-                }
-
-            mVoiceGuidance = voiceGuidance;
-            Log.d(TAG, voiceGuidance.getText());
-            infolbl.setText(voiceGuidance.getText(), TextView.BufferType.NORMAL);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                textToSpeech.speak(voiceGuidance.getText(), TextToSpeech.QUEUE_FLUSH, null, null);
-            } else {
-                textToSpeech.speak(voiceGuidance.getText(), TextToSpeech.QUEUE_FLUSH, null);
-            }
-
-        }
     }
 
     private List<Stop> getStops(){
@@ -224,159 +290,51 @@ public class NavigationActivity extends AppCompatActivity {
         Point walmart = new Point(-82.029751, 28.931747, SpatialReferences.getWgs84());
         Point caneGarden = new Point(-81.992341, 28.892343, SpatialReferences.getWgs84());
         Point lakeshorepool = new Point(-81.971427, 28.910289, SpatialReferences.getWgs84());
-        Point currentLocation = mLocationDisplay.getMapLocation();
+        //Point currentLocation = mLocationDisplay.getMapLocation();
 
-        stops.add(new Stop(currentLocation));
+        stops.add(new Stop(lakeshorepool));
         stops.add(new Stop(palmers));
         //stops.add(new Stop(caneGarden));
         return stops;
     }
 
-    private void startNavigation(){
+    private static List<Stop> getStopsFirstRoute() {
 
-        // setup route navigation
-        routeTask.loadAsync();
+        List<Stop> stops = new ArrayList<>(2);
 
-        routeTask.addDoneLoadingListener(() -> {
-            if (routeTask.getLoadError() == null && routeTask.getLoadStatus() == LoadStatus.LOADED) {
-                //final ListenableFuture<RouteParameters>
-                try {
-                    RouteParameters routeParameters = routeTask.createDefaultParametersAsync().get();
+        // National Air and Space Museum
+        //Stop airAndSpaceMuseum  = new Stop(new Point(-77.0196932, 38.8875456, SpatialReferences.getWgs84()));
+        Stop lakeShorePool = new Stop( new Point(-81.971427, 28.910289, SpatialReferences.getWgs84()));
+        stops.add(lakeShorePool);
 
-                    routeParameters.setStops(getStops());
-                    routeParameters.setReturnDirections(true);
-                    routeParameters.setReturnStops(true);
-                    routeParameters.setDirectionsLanguage("en");
-                    ;
-                    mRouteResult = routeTask.solveRouteAsync(routeParameters).get();
+        // National Gallery of Art
+        Stop  palmers = new Stop( new  Point (-81.993316, 28.910335, SpatialReferences.getWgs84()));
+        stops.add(palmers);
 
-                    Polyline routeGeometry = mRouteResult.getRoutes().get(0).getRouteGeometry();
+        // Washington Union Station
+        //Stop unionStation = new Stop(new Point(-77.0063628, 38.8969139, SpatialReferences.getWgs84()));
+        Stop walmart = new Stop( new Point(-82.029751, 28.931747, SpatialReferences.getWgs84()));
+        stops.add(walmart);
 
-                   if(mLocationDisplay.isStarted()){
-                       mLocationDisplay.stop();
-                       mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
-                       mLocationDisplay.setNavigationPointHeightFactor(0.2f);
+        return stops;
 
-                       Toast.makeText(this, "Stopped location service",Toast.LENGTH_SHORT).show();
-                       // for demo testing
-                       mLocationDisplay.setLocationDataSource(new RouteLocationDataSource(routeGeometry, this));
-                    }
+    }
 
-                    // show the route as a graphic in the map
-                    Graphic routeGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.BLUE, 5f));
-                    mGraphicsOverlay.getGraphics().clear();
-                    mGraphicsOverlay.getGraphics().add(routeGraphic);
-                    mMapView.setViewpointGeometryAsync(routeGeometry.getExtent());
+    private static List<Stop> getStopsSecondRoute() {
 
-                    // set routetracker
-                    routeTracker = new RouteTracker(this, mRouteResult, 0);
-                    routeTracker.setVoiceGuidanceUnitSystem(UnitSystem.IMPERIAL);
-                    // not available to 100.7.0
-                    //routeTracker.enableReroutingAsync(routeTask, routeParameters, RouteTracker.ReroutingStrategy.TO_NEXT_WAYPOINT, true).get();
+        List<Stop> stops = new ArrayList<>(2);
 
-                    // listen for location changes
-                    mLocationDisplay.addLocationChangedListener(new LocationDisplay.LocationChangedListener() {
-                        @Override
-                        public void onLocationChanged(LocationDisplay.LocationChangedEvent locationChangedEvent) {
+        // National Air and Space Museum
+        //Stop airAndSpaceMuseum  = new Stop(new Point(-77.0196932, 38.8875456, SpatialReferences.getWgs84()));
+        Stop lakeShorePool = new Stop( new Point(-81.971427, 28.910289, SpatialReferences.getWgs84()));
+        stops.add(lakeShorePool);
 
-                            Location currentLocation = locationChangedEvent.getLocation();
+        // National Geographic Museum
+        //Stop natGeoMuseum = new Stop(new Point(-77.0384956, 38.9044580, SpatialReferences.getWgs84()));
+        Point caneGarden = new Point(-81.992341, 28.892343, SpatialReferences.getWgs84());
+        stops.add(new Stop(caneGarden));
 
-                            mDirection = currentLocation.getCourse();
-                            double speed = currentLocation.getVelocity();
-                            Log.d(TAG, "Direction degrees: " + mDirection);
-                            Log.d(TAG, "speed : " + speed);
-
-                            // rotate the view
-                            double courseDirection = currentLocation.getCourse();
-                            if (courseDirection > 0.0d && courseDirection != mDirection){
-                                mDirection = courseDirection;
-                                Toast.makeText(NavigationActivity.this, "Set rotation " + mDirection, Toast.LENGTH_LONG ).show();
-
-                                mMapView.setViewpointRotationAsync(mDirection);
-                            }
-
-                            routeTracker.trackLocationAsync(currentLocation)
-                                    .addDoneListener(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            //speakNavigationInstructions();
-                                            View contextView = findViewById(R.id.fab);
-                                            String msg = "";
-                                            if (routeTracker.getTrackingStatus().isOnRoute()){
-                                                msg = "On route, you're doing great";
-                                            } else
-                                            {
-                                              msg = "You are NOT on route";
-                                              offRouteCount++;
-                                              if (offRouteCount > 3)
-                                                  refreshRouteNavigation();
-                                            }
-                                            Snackbar.make(contextView, msg , Snackbar.LENGTH_LONG)
-                                                    .setAction("Action", null).show();
-                                        }
-                                    });
-
-                        }
-                    });
-                    voiceGuidanceListener = newVoiceGuidanceEvent -> {
-
-                        VoiceGuidance voiceGuidance = newVoiceGuidanceEvent.getVoiceGuidance();
-                        infolbl.setText(voiceGuidance.getText(), TextView.BufferType.NORMAL);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            textToSpeech.speak(voiceGuidance.getText(), TextToSpeech.QUEUE_FLUSH, null, null);
-                        } else {
-                            textToSpeech.speak(voiceGuidance.getText(), TextToSpeech.QUEUE_FLUSH, null);
-                        }
-                    };
-                    routeTracker.addNewVoiceGuidanceListener(voiceGuidanceListener);
-
-                    routeTracker.addTrackingStatusChangedListener(new TrackingStatusChangedListener() {
-                        @Override
-                        public void onTrackingStatusChanged(TrackingStatusChangedEvent trackingStatusChangedEvent) {
-                            TrackingStatus status = trackingStatusChangedEvent.getTrackingStatus();
-
-                            if (status.getDestinationStatus() == DestinationStatus.REACHED){
-                                routeTracker.switchToNextDestinationAsync()
-                                        .addDoneListener(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                if (status.getDestinationStatus() == DestinationStatus.REACHED){
-                                                    mLocationDisplay.stop();
-                                                }
-                                                Log.d(TAG, "Switch to next distination runnable");
-                                            }
-                                        });
-                            }
-
-                            Log.d(TAG, "status = " + status.getRouteProgress().getRemainingTime());
-                        }
-                    });
-
-                    mLocationDisplay.startAsync();
-
-
-                } catch (Exception et) {
-                    Toast.makeText(this, "Navigation failed: " + et.getMessage(), Toast.LENGTH_LONG).show();
-                    Log.e(TAG, et.getCause().getMessage());
-                }
-
-            } else {
-                Toast.makeText(this, "Unable to load RouteTask " + routeTask.getLoadStatus().toString(), Toast.LENGTH_LONG).show();
-                Log.e(TAG, "Unable to load RouteTask " + routeTask.getLoadStatus().toString());
-            }
-
-        });
-
-    } // end start navigation
-    // called when ouff route more than x times.
-    private void refreshRouteNavigation(){
-        offRouteCount = 0;
-        routeTracker.removeNewVoiceGuidanceListener(voiceGuidanceListener);
-
-        Toast.makeText(this, "Starting reroute ",Toast.LENGTH_LONG).show();
-
-        //startNavigation();
-
+        return stops;
     }
 
     @Override
@@ -395,19 +353,10 @@ public class NavigationActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mMapView.dispose();
-        textToSpeech.shutdown();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-       // super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            mLocationDisplay.startAsync();
-        } else {
-            Toast.makeText(NavigationActivity.this, getResources().getString(R.string.location_permission_denied), Toast.LENGTH_SHORT).show();
-        }
 
     }
+
+
 
     /**
      * A LocationDataSource that simulates movement along the specified route. Upon start of the RouteLocationDataSource,
@@ -415,7 +364,7 @@ public class NavigationActivity extends AppCompatActivity {
      *
      * @since 100.6.0
      */
-    private class RouteLocationDataSource extends LocationDataSource
+    private static class RouteLocationDataSource extends LocationDataSource
     {
         private Point currentLocation;
         private Timer mTimer;

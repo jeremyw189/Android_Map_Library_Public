@@ -8,12 +8,6 @@
     tools:context=".NavigationActivity"
     tools:showIn="@layout/activity_navigation">
 
-
-    <com.esri.arcgisruntime.mapping.view.MapView
-        android:id="@+id/mapNavView1"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
     <androidx.appcompat.widget.AppCompatEditText
         android:id="@+id/infoText"
         android:layout_width="match_parent"
@@ -23,11 +17,18 @@
         android:background="@color/colorWhiteSemiTransparent"
         android:focusable="false"
         android:inputType="textNoSuggestions"
-        android:textSize="12sp"
         android:padding="10dp"
+        android:textSize="12sp"
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="SmallSp"
-        tools:layout_editor_absoluteX="10dp"
-        tools:visibility="invisible" />
+        tools:visibility="visible" />
+
+    <com.esri.arcgisruntime.mapping.view.MapView
+        android:id="@+id/mapNavView1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="36dp"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="59dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

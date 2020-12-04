@@ -24,5 +24,5 @@
     <string name="start_navigation">Start Navigation</string>
     <string name="recenter">Recenter</string>
     <string name="reroute_supported">"Rerouting is enabled"</string>
-
+    <string name="route_error">Error creating route!</string>
 </resources>
