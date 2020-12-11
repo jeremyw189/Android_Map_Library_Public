@@ -4,8 +4,8 @@ import com.esri.arcgisruntime.location.LocationDataSource;
 import com.esri.arcgisruntime.navigation.RouteTracker;
 
 public class RouteTrackerDisplayLocationDataSource extends LocationDataSource {
-    private LocationDataSource mLocationDataSource;
-    private RouteTracker mRouteTracker;
+    private final LocationDataSource mLocationDataSource;
+    private final RouteTracker mRouteTracker;
 
     public RouteTrackerDisplayLocationDataSource(RouteTracker routeTracker, LocationDataSource dataSource){
         mLocationDataSource = dataSource;

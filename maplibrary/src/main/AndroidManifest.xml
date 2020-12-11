@@ -5,7 +5,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <application>
+    <application android:supportsRtl="false">
+
         <activity
             android:name=".MapNavActivity"
             android:theme="@style/AppTheme.NoActionBar"  >
@@ -17,13 +18,6 @@
         <activity
             android:name=".NavSceneActivity"
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".MapViewActivity"
-            android:theme="@style/Theme.AppCompat">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>

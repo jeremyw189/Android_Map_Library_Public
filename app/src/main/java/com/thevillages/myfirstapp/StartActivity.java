@@ -22,7 +22,7 @@ import android.widget.Toast;
 import com.thevillages.maplibrary.TravelType;
 
 public class StartActivity extends AppCompatActivity {
-    private int LOCATION_ACCESS_CODE = 1;
+    private final int LOCATION_ACCESS_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

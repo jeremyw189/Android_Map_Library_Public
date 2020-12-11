@@ -8,7 +8,7 @@ public enum  TravelType {
     private final int value;
     private final static Map<Integer, TravelType> map = new HashMap<Integer, TravelType>();
 
-    private TravelType(int value){
+    TravelType(int value){
         this.value = value;
     }
 

@@ -369,9 +369,9 @@ public class NavigationActivity extends AppCompatActivity {
         private Point currentLocation;
         private Timer mTimer;
         private Long distance = 0L;
-        private Long distanceInterval = 40L;
-        private Polyline mRoute;
-        private Context mContext;
+        private final Long distanceInterval = 40L;
+        private final Polyline mRoute;
+        private final Context mContext;
         private ImmutablePartCollection parts;
 
 

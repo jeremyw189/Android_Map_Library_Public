@@ -77,7 +77,7 @@ import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
-    private int LOCATION_ACCESS_CODE = 1;
+    private final int LOCATION_ACCESS_CODE = 1;
     private final String TAG = MainActivity.class.getSimpleName();
     private final String COLUMN_NAME_ADDRESS = "address";
     private final String[] mColumnNames = { BaseColumns._ID, COLUMN_NAME_ADDRESS };
@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
     private SceneView mSceneView;
     private FeatureLayer mFeatureLayer;
     private Point mLocation;
-    private MapViewModel vm;
+    private final MapViewModel vm;
     private TravelType mTravelType = TravelType.CAR;
 
     public MainActivity(){

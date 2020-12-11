@@ -1,14 +1,18 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 30
     defaultConfig {
         applicationId "com.thevillages.myfirstapp"
         minSdkVersion 23
-        targetSdkVersion 29
+        targetSdkVersion 30
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // to limit what architectures are used.
+        //ndk {
+        //    abiFilters "armeabi", "armeabi-v7a", "arm64-v8a"
+       // }
     }
     buildTypes {
         release {
@@ -22,7 +26,7 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    buildToolsVersion '29.0.2'
+    buildToolsVersion '30.0.3'
 }
 
 dependencies {

@@ -1,14 +1,18 @@
 package com.thevillages.maplibrary;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.ActionBarContainer;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.Notification;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -22,25 +26,19 @@ import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.view.WindowManager;
+import android.widget.ActionMenuView;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.esri.arcgisruntime.ArcGISRuntimeEnvironment;
-import com.esri.arcgisruntime.ArcGISRuntimeException;
 import com.esri.arcgisruntime.UnitSystem;
 import com.esri.arcgisruntime.concurrent.ListenableFuture;
-import com.esri.arcgisruntime.geometry.Geometry;
 import com.esri.arcgisruntime.geometry.Point;
 import com.esri.arcgisruntime.geometry.Polyline;
 import com.esri.arcgisruntime.geometry.SpatialReferences;
-import com.esri.arcgisruntime.io.JsonEmbeddedException;
 import com.esri.arcgisruntime.layers.ArcGISTiledLayer;
 import com.esri.arcgisruntime.loadable.LoadStatus;
-//import com.esri.arcgisruntime.location.RouteTrackerLocationDataSource;
-import com.esri.arcgisruntime.location.AndroidLocationDataSource;
 import com.esri.arcgisruntime.location.RouteTrackerLocationDataSource;
 import com.esri.arcgisruntime.location.SimulatedLocationDataSource;
 import com.esri.arcgisruntime.location.SimulationParameters;
@@ -54,7 +52,6 @@ import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.navigation.DestinationStatus;
 import com.esri.arcgisruntime.navigation.RouteTracker;
 import com.esri.arcgisruntime.navigation.TrackingStatus;
-import com.esri.arcgisruntime.symbology.PictureMarkerSymbol;
 import com.esri.arcgisruntime.symbology.SimpleLineSymbol;
 import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol;
 import com.esri.arcgisruntime.tasks.networkanalysis.DirectionManeuver;
@@ -62,6 +59,7 @@ import com.esri.arcgisruntime.tasks.networkanalysis.RouteParameters;
 import com.esri.arcgisruntime.tasks.networkanalysis.RouteResult;
 import com.esri.arcgisruntime.tasks.networkanalysis.RouteTask;
 import com.esri.arcgisruntime.tasks.networkanalysis.Stop;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -76,13 +74,11 @@ public class MapNavActivity extends AppCompatActivity {
     private final String TAG = MapNavActivity.class.getSimpleName();
     private MapView mMapView;
     private RouteTracker mRouteTracker;
-    //private RouteTask mRouteTask;
     private LocationDisplay mLocationDisplay;
     private Graphic mRouteAheadGraphic;
     private Graphic mRouteTraveledGraphic;
     private GraphicsOverlay mGraphicsOverlay;
     private MenuItem mRecenterButton;
-    //private RouteParameters mRouteParameters;
     private TextToSpeech mTextToSpeech;
     private boolean mIsTextToSpeechInitialized = false;
     private TextView directionLbl;
@@ -90,20 +86,19 @@ public class MapNavActivity extends AppCompatActivity {
     private Point mCurrentLocation;
     private RouteTracker.NewVoiceGuidanceListener myNewVoiceGuidanceListener;
     private RouteTracker.TrackingStatusChangedListener myTrackingStatusChangedListener;
-    private LocationDisplay.LocationChangedListener myLocationChangedListener;
-
     private List<DirectionManeuver> mDirections;
     private TravelType mTravelType;
+    private boolean mImNavigating;
 
     public MapNavActivity(){
         ArcGISRuntimeEnvironment.setLicense("runtimebasic,1000,rud000252796,none,MJJ47AZ7G349NERL1216");
-
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_nav);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         initFontIcons();
         // setup toolbar
         Toolbar myToolBar = (Toolbar) findViewById(R.id.my_toolbar);
@@ -135,6 +130,8 @@ public class MapNavActivity extends AppCompatActivity {
         ArcGISMap map = new ArcGISMap(basemap);
         mMapView.setMap(map);
 
+        createGraphicsOverlay();
+
         map.addDoneLoadingListener(this::setLocationDisplay);
 
         map.loadAsync();
@@ -164,7 +161,7 @@ public class MapNavActivity extends AppCompatActivity {
 
     private void initFontIcons(){
         //Typeface fontAwesome = Typeface.createFromAsset(getAssets(), "fonts/fa-solid-900.ttf");
-        ImageButton fab = findViewById(R.id.fab);
+        FloatingActionButton fab = findViewById(R.id.fab);
         FontDrawable mapIcon = new FontDrawable(this, R.string.fa_map_marked_alt_solid, true, false);
         mapIcon.setTextSize(18);
         mapIcon.setTextColor(ContextCompat.getColor(this, android.R.color.white));
@@ -181,18 +178,30 @@ public class MapNavActivity extends AppCompatActivity {
             return true;
         }
         if (item.getItemId() == R.id.toolbar_directions) {
-            View view = item.getActionView();
-            if (view == null)
-                return true;
+            //View view = item.getActionView();
+            //if (view == null)
+            //    return true;
+            // display popup of directions
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            String[] directions = new String[mDirections.size()];
+            for (int i=0; i<mDirections.size(); i++){
+                directions[i] = mDirections.get(i).getDirectionText();
+            }
+            builder.setTitle("Directions")
+                    .setItems(directions, null)
+                    .setNegativeButton(R.string.close, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            dialogInterface.cancel();
+                        }
+                    });
+            AlertDialog directionModal =  builder.create();
+            directionModal.show();
 
             return true;
         }
         if (item.getItemId() == R.id.toolbar_stop) {
-            mLocationDisplay.stop();
-            //mMapView.getLocationDisplay().stop();
-            mGraphicsOverlay = new GraphicsOverlay();
-            mMapView.getGraphicsOverlays().clear();
-            mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
+            stopNavigation();
             return true;
         }
 
@@ -219,7 +228,6 @@ public class MapNavActivity extends AppCompatActivity {
         drawable.setTextColor(ContextCompat.getColor(this, android.R.color.white));
         stopMenuItem.setIcon(drawable);
 
-
         return true;
         //return super.onCreateOptionsMenu(menu);
     }
@@ -231,9 +239,6 @@ public class MapNavActivity extends AppCompatActivity {
 
     // call after map done loading
     private void setLocationDisplay() {
-        GraphicsOverlay gp = new GraphicsOverlay();
-        mMapView.getGraphicsOverlays().clear();
-        mMapView.getGraphicsOverlays().add(gp);
 
         mLocationDisplay = mMapView.getLocationDisplay();
 
@@ -268,8 +273,9 @@ public class MapNavActivity extends AppCompatActivity {
     }
 
     private void findRoute(String routeService) {
+        mMapView.getGraphicsOverlays().get(0).getGraphics().clear();
         mCurrentLocation = mLocationDisplay.getMapLocation();
-        createGraphicsOverlay();
+
         RouteTask routeTask =  new RouteTask(this, routeService);
 
         routeTask.loadAsync();
@@ -310,7 +316,7 @@ public class MapNavActivity extends AppCompatActivity {
                                 mMapView.setViewpointAsync(new Viewpoint(routeGeometry.getExtent()));
 
                                 // create a button to start navigation with the given route
-                                ImageButton navigateRouteButton = findViewById(R.id.fab);
+                                FloatingActionButton navigateRouteButton = findViewById(R.id.fab);
                                 navigateRouteButton.setOnClickListener(v -> startNavigation(routeTask, routeParameters, routeResult));
 
                             } catch (ExecutionException | InterruptedException e) {
@@ -332,23 +338,36 @@ public class MapNavActivity extends AppCompatActivity {
 
     }   //end find route
 
+    private void stopNavigation(){
+        mLocationDisplay.stop();
+        //mMapView.getLocationDisplay().stop();
+        mGraphicsOverlay = new GraphicsOverlay();
+        mMapView.getGraphicsOverlays().clear();
+        mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
+    }
+
     private void startNavigation(RouteTask routeTask, RouteParameters routeParameters, RouteResult routeResult) {
-        //WindowManager wm = getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (mImNavigating){
+            mLocationDisplay.stop();
+            mImNavigating = false;
+            return;
+        }
+        mImNavigating = true;
+
         // create a graphic (solid) to represent the route that's been traveled (initially empty)
-        //mMapView.getGraphicsOverlays().get(0).getGraphics().clear();
+        mMapView.getGraphicsOverlays().get(0).getGraphics().clear();
 
         // get the route's geometry from the route result
         Polyline routeGeometry = routeResult.getRoutes().get(0).getRouteGeometry();
 
-        mRouteAheadGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.DASH, Color.RED, 5f));
-        //mRouteTraveledGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.BLUE, 5f));
+        mRouteAheadGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.RED, 5f));
+        mRouteTraveledGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.GREEN, 5f));
 
         GraphicsOverlay graphicsOverlay = new GraphicsOverlay();
         //graphicsOverlay.setOpacity((float)0.4);
         mMapView.getGraphicsOverlays().add(graphicsOverlay);
-        graphicsOverlay.getGraphics().add(mRouteAheadGraphic);
-        //mGraphicsOverlay.getGraphics().add(mRouteAheadGraphic);
+        mMapView.getGraphicsOverlays().get(1).getGraphics().add(mRouteAheadGraphic);
+        mMapView.getGraphicsOverlays().get(1).getGraphics().add(mRouteTraveledGraphic);
 
         mLocationDisplay = mMapView.getLocationDisplay();
 
@@ -360,8 +379,9 @@ public class MapNavActivity extends AppCompatActivity {
         mRouteTracker.addNewVoiceGuidanceListener(getNewVoiceGuidanceListener());
 
         if (routeTask.getRouteTaskInfo().isSupportsRerouting()) {
-             mRouteTracker.enableReroutingAsync(routeTask, routeParameters, RouteTracker.ReroutingStrategy.TO_NEXT_WAYPOINT, true);
+             mRouteTracker.enableReroutingAsync(routeTask, routeParameters, RouteTracker.ReroutingStrategy.TO_NEXT_WAYPOINT, false);
             // setup listener for rerouting
+            directionLbl.setText("REROUTING ENABLED");
             Toast.makeText(this, R.string.reroute_supported, Toast.LENGTH_LONG ).show();
             //mRouteTracker.addRerouteStartedListener(rerouteStartedEvent ->  {
             //    mRouteTracker.removeNewVoiceGuidanceListener(myNewVoiceGuidanceListener);
@@ -376,27 +396,34 @@ public class MapNavActivity extends AppCompatActivity {
 
         // for demo
         // set up a simulated location data source which simulates movement along the route
-        SimulatedLocationDataSource mSimulatedLocationDataSource = new SimulatedLocationDataSource();
-        SimulationParameters simulationParameters = new SimulationParameters(Calendar.getInstance(), 35, 5, 5);
-        mSimulatedLocationDataSource.setLocations(routeGeometry, simulationParameters);
+        //SimulatedLocationDataSource mSimulatedLocationDataSource = new SimulatedLocationDataSource();
+        //SimulationParameters simulationParameters = new SimulationParameters(Calendar.getInstance(), 35, 5, 5);
+        //mSimulatedLocationDataSource.setLocations(routeGeometry, simulationParameters);
         // create a route tracker location data source to snap the location display to the route
-        RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mSimulatedLocationDataSource);
+        //RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mSimulatedLocationDataSource);
 
         // for production use device location data source
-        // RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mLocationDisplay.getLocationDataSource());
+        RouteTrackerLocationDataSource routeTrackerLocationDataSource = new RouteTrackerLocationDataSource(mRouteTracker, mLocationDisplay.getLocationDataSource());
         // set the route tracker location data source as the location data source for this app
         mLocationDisplay.setLocationDataSource(routeTrackerLocationDataSource);
 
         // if the user navigates the map view away from the location display, activate the recenter button
         mLocationDisplay.addAutoPanModeChangedListener(autoPanModeChangedEvent -> mRecenterButton.setEnabled(true));
 
+        mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
+
         //mRouteTracker.addTrackingStatusChangedListener(getTrackingStatusChangedListener());
         mLocationDisplay.addLocationChangedListener(locationChangedEvent -> {
+
             TrackingStatus trackingStatus = mRouteTracker.getTrackingStatus();
             // set geometries for the route ahead and the remaining route
-            Polyline rGeometry = trackingStatus.getRouteProgress().getRemainingGeometry();
-          //  if (rGeometry != null && mRouteAheadGraphic != null )
-            mRouteAheadGraphic.setGeometry(rGeometry);
+            if (trackingStatus == null)
+                return;
+
+            if (trackingStatus.getRouteProgress() != null) {
+                mRouteAheadGraphic.setGeometry(trackingStatus.getRouteProgress().getRemainingGeometry());
+                mRouteTraveledGraphic.setGeometry(trackingStatus.getRouteProgress().getTraversedGeometry());
+            }
 
             if (trackingStatus.getDestinationStatus() == DestinationStatus.REACHED) {
                 // if there are more destinations to visit. Greater than 1 because the start point is considered a "stop"
@@ -411,46 +438,12 @@ public class MapNavActivity extends AppCompatActivity {
                 }
             }
         });
-        mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
-        mLocationDisplay.startAsync();
 
+        mLocationDisplay.startAsync();
         //Toast.makeText(getApplicationContext(), "Navigating to the first stop.", Toast.LENGTH_SHORT ).show();
 
     } // end start navigation
 
-    private LocationDisplay.LocationChangedListener getMyLocationChangedListener(){
-        myLocationChangedListener = new LocationDisplay.LocationChangedListener() {
-            @Override
-            public void onLocationChanged(LocationDisplay.LocationChangedEvent locationChangedEvent) {
-
-                TrackingStatus trackingStatus = mRouteTracker.getTrackingStatus();
-                // set geometries for the route ahead and the remaining route
-                mRouteAheadGraphic.setGeometry(trackingStatus.getRouteProgress().getRemainingGeometry());
-                //Polyline graphic = trackingStatus.getRouteProgress().getTraversedGeometry();
-                //mRouteTraveledGraphic.setGeometry(graphic);
-
-                // get remaining distance information
-                //TrackingStatus.Distance remainingDistance = trackingStatus.getDestinationProgress().getRemainingDistance();
-                // covert remaining minutes to hours:minutes:seconds
-                //String remainingTimeString = DateUtils.formatElapsedTime((long) (trackingStatus.getDestinationProgress().getRemainingTime() * 60));
-
-                // if a destination has been reached
-                if (trackingStatus.getDestinationStatus() == DestinationStatus.REACHED) {
-                    // if there are more destinations to visit. Greater than 1 because the start point is considered a "stop"
-                    if (mRouteTracker.getTrackingStatus().getRemainingDestinationCount() > 1) {
-                        // switch to the next destination
-                        mRouteTracker.switchToNextDestinationAsync();
-                        Toast.makeText(getApplicationContext(), "Navigating to the second stop.", Toast.LENGTH_LONG).show();
-                    } else {
-                        mMapView.getLocationDisplay().stop();
-                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                        Toast.makeText(getApplicationContext(), "Arrived at the final destination.", Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
-        };
-        return myLocationChangedListener;
-    }
 
     private RouteTracker.TrackingStatusChangedListener getTrackingStatusChangedListener() {
         myTrackingStatusChangedListener = new RouteTracker.TrackingStatusChangedListener() {
@@ -509,11 +502,7 @@ public class MapNavActivity extends AppCompatActivity {
      */
     private void speakVoiceGuidance(String voiceGuidanceText) {
         if (mIsTextToSpeechInitialized && !mTextToSpeech.isSpeaking()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mTextToSpeech.speak(voiceGuidanceText, TextToSpeech.QUEUE_FLUSH, null, null);
-            } else {
-                mTextToSpeech.speak(voiceGuidanceText, TextToSpeech.QUEUE_FLUSH, null);
-            }
+            mTextToSpeech.speak(voiceGuidanceText, TextToSpeech.QUEUE_FLUSH, null, null);
         }
     }
 
@@ -556,14 +545,12 @@ public class MapNavActivity extends AppCompatActivity {
         if(mMapView != null){
             mMapView.pause();
         }
-
         super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
         if (mMapView != null) {
             mMapView.resume();
         }
@@ -571,11 +558,42 @@ public class MapNavActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        super.onDestroy();
+        mMapView.dispose();
+    }
+
+    @Override
+    protected void onStop() {
+        // clean up
         if (mMapView != null) {
+            mLocationDisplay.stop();
+            mLocationDisplay = null;
+            //mRouteTracker.removeNewVoiceGuidanceListener(myNewVoiceGuidanceListener);
+            mRouteTracker = null;
+            mTextToSpeech.stop();
             mMapView.dispose();
         }
-        super.onDestroy();
+        super.onStop();
     }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+    }
+
+    public Dialog onCreateDialog(Bundle savedInstanceState){
+        AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
+        String[] directions = new String[mDirections.size()];
+        for (int i=0; i<mDirections.size(); i++){
+            directions[i] = mDirections.get(i).getDirectionText();
+        }
+
+        builder.setTitle("Directions")
+                .setItems(directions, null);
+
+        return builder.create();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         // super.onRequestPermissionsResult(requestCode, permissions, grantResults);
