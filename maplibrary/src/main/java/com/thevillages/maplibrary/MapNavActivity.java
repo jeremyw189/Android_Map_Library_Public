@@ -1,6 +1,7 @@
 package com.thevillages.maplibrary;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.ActionBarContainer;
@@ -22,6 +23,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.speech.tts.TextToSpeech;
+import android.text.Html;
 import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.Menu;
@@ -37,6 +39,7 @@ import com.esri.arcgisruntime.concurrent.ListenableFuture;
 import com.esri.arcgisruntime.geometry.Point;
 import com.esri.arcgisruntime.geometry.Polyline;
 import com.esri.arcgisruntime.geometry.SpatialReferences;
+import com.esri.arcgisruntime.io.RequestConfiguration;
 import com.esri.arcgisruntime.layers.ArcGISTiledLayer;
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.location.RouteTrackerLocationDataSource;
@@ -82,7 +85,7 @@ public class MapNavActivity extends AppCompatActivity {
     private TextToSpeech mTextToSpeech;
     private boolean mIsTextToSpeechInitialized = false;
     private TextView directionLbl;
-    private Point mDestination;
+    private Stop mDestination;
     private Point mCurrentLocation;
     private RouteTracker.NewVoiceGuidanceListener myNewVoiceGuidanceListener;
     private RouteTracker.TrackingStatusChangedListener myTrackingStatusChangedListener;
@@ -92,6 +95,7 @@ public class MapNavActivity extends AppCompatActivity {
 
     public MapNavActivity(){
         ArcGISRuntimeEnvironment.setLicense("runtimebasic,1000,rud000252796,none,MJJ47AZ7G349NERL1216");
+
     }
 
     @Override
@@ -102,7 +106,9 @@ public class MapNavActivity extends AppCompatActivity {
         initFontIcons();
         // setup toolbar
         Toolbar myToolBar = (Toolbar) findViewById(R.id.my_toolbar);
+        myToolBar.setTitleTextColor(Color.WHITE);
         setSupportActionBar(myToolBar);
+
         // show the back arrow.
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
 
@@ -116,10 +122,12 @@ public class MapNavActivity extends AppCompatActivity {
             int travel = getIntent().getIntExtra("TRAVEL_TYPE", 0);
             String address = getIntent().getStringExtra("ADDRESS");
             if (address != null) {
-                getSupportActionBar().setTitle(address);
+                //getSupportActionBar().setTitle( Html.fromHtml("<font color=\"white\">" + address + "</font>"));
+               getSupportActionBar().setTitle(address);
             }
             mTravelType = (travel == 0) ? TravelType.CAR : TravelType.GOLF_CART;
-            mDestination = new Point( GISLong, GISLat, SpatialReferences.getWgs84());
+            mDestination = new Stop(new Point( GISLong, GISLat, SpatialReferences.getWgs84()));
+            mDestination.setName(address);
         }
 
 
@@ -259,15 +267,16 @@ public class MapNavActivity extends AppCompatActivity {
                     && ContextCompat.checkSelfPermission(this, requestPermissions[1]) == PackageManager.PERMISSION_GRANTED)) {
                 ActivityCompat.requestPermissions(this, requestPermissions, requestPermissionsCode);
             } else {
-                String msg = "unknown";
                 if (dataSourceStatusChangedEvent.getError() != null){
+                    String msg = "unknown";
                     msg = dataSourceStatusChangedEvent.getError().getMessage();
+                    String message = String.format("Error in DataSourceStatusChangedListener: %s", msg );
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
                 }
-                 String message = String.format("Error in DataSourceStatusChangedListener: %s", msg );
-                 Toast.makeText(this, message, Toast.LENGTH_LONG).show();
             }
         });
-        mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.COMPASS_NAVIGATION);
+
+        mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
         mLocationDisplay.startAsync();
         //mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.OFF);
     }
@@ -310,7 +319,7 @@ public class MapNavActivity extends AppCompatActivity {
                                 //mGraphicsOverlay.getGraphics().add(mRouteAheadGraphic);
 
                                 // add it to the graphics overlay
-                                setEndMarker(mDestination);
+                                setEndMarker(mDestination.getGeometry());
                                 setStartMarker(mCurrentLocation);
                                 // set the map view view point to show the whole route
                                 mMapView.setViewpointAsync(new Viewpoint(routeGeometry.getExtent()));
@@ -339,11 +348,14 @@ public class MapNavActivity extends AppCompatActivity {
     }   //end find route
 
     private void stopNavigation(){
-        mLocationDisplay.stop();
-        //mMapView.getLocationDisplay().stop();
-        mGraphicsOverlay = new GraphicsOverlay();
-        mMapView.getGraphicsOverlays().clear();
-        mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
+        if (mLocationDisplay.isStarted()) {
+            mTextToSpeech.stop();
+            mLocationDisplay.stop();
+            //mDirections.clear();
+        }
+       // mGraphicsOverlay = new GraphicsOverlay();
+       // mMapView.getGraphicsOverlays().clear();
+       // mMapView.getGraphicsOverlays().add(mGraphicsOverlay);
     }
 
     private void startNavigation(RouteTask routeTask, RouteParameters routeParameters, RouteResult routeResult) {
@@ -512,9 +524,10 @@ public class MapNavActivity extends AppCompatActivity {
             mMapView.getLocationDisplay().startAsync();
             mCurrentLocation = mLocationDisplay.getMapLocation();
         }
-        stops.add(new Stop(mCurrentLocation));
-        stops.add(new Stop(mDestination));
-
+        Stop start = new Stop(mCurrentLocation);
+        start.setName("Current Location");
+        stops.add(start);
+        stops.add(mDestination);
         return stops;
     }
     private void createGraphicsOverlay() {

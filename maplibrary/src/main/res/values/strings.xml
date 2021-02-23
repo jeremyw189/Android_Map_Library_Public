@@ -3,7 +3,7 @@
     <string name="navigation_vector">https://www.arcgis.com/sharing/rest/content/items/dcbbba0edf094eaa81af19298b9c6247/resources/styles/root.json</string>
     <string name="car_route_service">https://arc7.thevillages.com/arcgis/rest/services/CARROUTES/NAServer/Route</string>
     <string name="golf_route_service">https://arc7.thevillages.com/arcgis/rest/services/GOLFCROUTE2/NAServer/Route</string>
-    <string name="route_servce">https://utility.arcgis.com/usrsvcs/appservices/RLUki8o20etUUGdG/rest/services/World/Route/GPServer/FindRoutes</string>
+    <string name="route_service">https://utility.arcgis.com/usrsvcs/appservices/RLUki8o20etUUGdG/rest/services/World/Route/GPServer/FindRoutes</string>
     <string name="map_service">https://arc7.thevillages.com/arcgis/rest/services/PUBLICMAP26/MapServer</string>
     <string name="geocode_server">https://arc5.thevillages.com/arcgis/rest/services/TSGLOCATE2/GeocodeServer</string>
     <!-- Drawer strings-->

@@ -32,6 +32,12 @@
         android:layout_height="wrap_content"
         app:layout_constraintTop_toBottomOf="@id/my_toolbar"  />
 
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/distanceLbl"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:contentDescription="@string/start_navigation"
         android:src="@drawable/ic_navigate"

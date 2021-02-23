@@ -103,8 +103,8 @@ public class MainActivity extends AppCompatActivity {
     private TravelType mTravelType = TravelType.CAR;
 
     public MainActivity(){
-        vm = new MapViewModel();
         ArcGISRuntimeEnvironment.setLicense("runtimebasic,1000,rud000252796,none,MJJ47AZ7G349NERL1216");
+        vm = new MapViewModel();
     }
 
     @SuppressLint("ClickableViewAccessibility")
