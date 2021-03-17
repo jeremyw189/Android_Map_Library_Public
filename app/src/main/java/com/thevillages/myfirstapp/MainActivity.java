@@ -70,8 +70,8 @@ import com.esri.arcgisruntime.portal.Portal;
 import com.esri.arcgisruntime.portal.PortalItem;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import com.thevillages.maplibrary.MapViewModel;
-import com.thevillages.maplibrary.TravelType;
+import com.thevillages.maplib.MapViewModel;
+import com.thevillages.maplib.TravelType;
 
 import java.util.concurrent.ExecutionException;
 
@@ -222,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
 
                 //Intent intent = new Intent(getApplicationContext(), Class.forName("MapViewActivity"));
                 Intent intent = new Intent(Intent.ACTION_VIEW);
-                String actvitityClassName = "com.thevillages.maplibrary.MapNavActivity"; //"com.thevillages.maplibrary.MapViewActivity"
+                String actvitityClassName = "com.thevillages.maplib.MapNavActivity"; //"com.thevillages.maplib.MapViewActivity"
                 intent.setClassName(getApplicationContext(), actvitityClassName );
                 //Intent intent = new Intent(MainActivity.this, NavigationActivity.class );
                 intent.putExtra("GISLONG", mLocation.getX());

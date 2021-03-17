@@ -19,7 +19,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.thevillages.maplibrary.TravelType;
+import com.thevillages.maplib.TravelType;
 
 public class StartActivity extends AppCompatActivity {
     private final int LOCATION_ACCESS_CODE = 1;
