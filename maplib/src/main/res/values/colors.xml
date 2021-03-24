@@ -6,5 +6,7 @@
     <color name="colorWhiteSemiTransparent">#D9ffffff</color>
     <color name="red">#ffff0000</color>
     <color name="colorVillageGreen">#00492B</color>
+    <color name="colorVillageGold">#BB9B6A</color>
+    <color name="colorVillageBurgundy">#800020</color>
     <color name="colorActionBarFont">#ffffff</color>
 </resources>

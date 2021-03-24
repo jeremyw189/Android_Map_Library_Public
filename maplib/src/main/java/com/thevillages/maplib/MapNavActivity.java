@@ -3,6 +3,7 @@ package com.thevillages.maplib;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.ActionBarContainer;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -16,6 +17,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -167,19 +169,31 @@ public class MapNavActivity extends AppCompatActivity {
             enableLocationSettings();
         }
 
+        // Button centerButton = findViewById(R.id.centerButton);
+        // centerButton.setOnClickListener(v -> startNavigation(routeTask, routeParameters, routeResult));
+
     } // end onCreate
 
     private void initFontIcons(){
         //Typeface fontAwesome = Typeface.createFromAsset(getAssets(), "fonts/fa-solid-900.ttf");
-        FloatingActionButton fab = findViewById(R.id.fab);
+        // FloatingActionButton fab = findViewById(R.id.fab);
         FontDrawable mapIcon = new FontDrawable(this, R.string.fa_map_marked_alt_solid, true, false);
         if (mImNavigating) {
             mapIcon = new FontDrawable(this, R.string.fa_stop_circle_solid, true, false);
         }
         mapIcon.setTextSize(18);
         mapIcon.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        fab.setImageDrawable(mapIcon);
-        fab.setBackgroundColor(Color.RED);
+        // fab.setImageDrawable(mapIcon);
+        // fab.setBackgroundColor(Color.RED);
+    }
+
+    public void centerButtonClick(View view) {
+        mMapView.getLocationDisplay().setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
+        mRecenterButton.setEnabled(false);
+    }
+
+    public void directionsButtonClick(View view) {
+        showSimpleAdapterAlertDialog();
     }
 
     @Override
@@ -328,7 +342,8 @@ public class MapNavActivity extends AppCompatActivity {
                                 mMapView.setViewpointAsync(new Viewpoint(routeGeometry.getExtent()));
 
                                 // create a button to start navigation with the given route
-                                FloatingActionButton navigateRouteButton = findViewById(R.id.fab);
+                                // FloatingActionButton navigateRouteButton = findViewById(R.id.fab);
+                                Button navigateRouteButton = findViewById(R.id.navigationButton);
                                 navigateRouteButton.setOnClickListener(v -> startNavigation(routeTask, routeParameters, routeResult));
 
                             } catch (ExecutionException | InterruptedException e) {
@@ -363,11 +378,23 @@ public class MapNavActivity extends AppCompatActivity {
 
     private void startNavigation(RouteTask routeTask, RouteParameters routeParameters, RouteResult routeResult) {
 
-        if (mImNavigating){
-           stopNavigation();
-           mImNavigating = false;
+        // Reference the navigate button so we can change it's color and text later
+        Button navigateRouteButton = findViewById(R.id.navigationButton);
+
+        if (mImNavigating) {
+            stopNavigation();
+            mImNavigating = false;
             initFontIcons();
-           return;
+
+            // Update navigate button color and text
+            navigateRouteButton.setBackgroundColor(getResources().getColor(R.color.colorVillageGreen));
+            navigateRouteButton.setText(getResources().getText(R.string.toolbar_start));
+            return;
+        }
+        else {
+            // Update navigate button color and text
+            navigateRouteButton.setBackgroundColor(getResources().getColor(R.color.colorVillageBurgundy));
+            navigateRouteButton.setText(getResources().getText(R.string.toolbar_stop));
         }
         // change button icon to stop.
 

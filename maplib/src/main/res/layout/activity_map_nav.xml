@@ -13,46 +13,108 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimaryDark"
         android:elevation="4dp"
+        android:theme="@style/ToolbarStyle"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <com.esri.arcgisruntime.mapping.view.MapView
-        android:id="@+id/myMapView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="38dp"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="78dp"
-        app:layout_constraintBottom_toTopOf="@id/distanceLbl"
-        >
-    </com.esri.arcgisruntime.mapping.view.MapView>
 
     <include
         android:id="@+id/infoBox"
         layout="@layout/content_map_nav"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/my_toolbar"  />
+        android:layout_height="56dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="@id/my_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/my_toolbar" />
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/distanceLbl"
+    <com.esri.arcgisruntime.mapping.view.MapView
+        android:id="@+id/myMapView"
         android:layout_width="match_parent"
-        android:layout_height="38dp"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/timeDistanceLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/infoBox"></com.esri.arcgisruntime.mapping.view.MapView>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:contentDescription="@string/start_navigation"
-        android:src="@drawable/ic_navigate"
-        android:id="@+id/fab"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/timeDistanceLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="@dimen/fab_margin"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="675dp"
-        android:padding="20dp"
+        android:background="@color/colorVillageGreen"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toTopOf="@id/bottomToolbar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/distanceLbl"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:gravity="center_horizontal|center_vertical"
+            android:textColor="@color/colorActionBarFont"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/timeLbl"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:gravity="center_horizontal|center_vertical"
+            android:textColor="@color/colorActionBarFont"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/bottomToolbar"
+        style="?android:attr/buttonBarStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:orientation="horizontal"
+        android:padding="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-         />
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageButton
+            android:id="@+id/centerButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
+            android:background="#FFFFFF"
+            android:contentDescription="@string/recenter"
+            android:onClick="centerButtonClick"
+            android:src="@drawable/ic_baseline_my_location_24"
+            android:tint="#000000" />
+
+        <Button
+            android:id="@+id/navigationButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:background="@color/colorVillageGreen"
+            android:text="@string/toolbar_start"
+            android:textColor="@color/colorActionBarFont" />
+
+        <ImageButton
+            android:id="@+id/directionsButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:background="#FFFFFF"
+            android:contentDescription="@string/toolbar_direction"
+            android:onClick="directionsButtonClick"
+            android:src="@drawable/ic_baseline_format_list_bulleted_24"
+            android:tint="#000000" />
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
