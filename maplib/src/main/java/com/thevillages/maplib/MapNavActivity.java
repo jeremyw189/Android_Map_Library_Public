@@ -87,7 +87,7 @@ public class MapNavActivity extends AppCompatActivity {
     private Graphic mRouteAheadGraphic;
     private Graphic mRouteTraveledGraphic;
     private GraphicsOverlay mGraphicsOverlay;
-    private MenuItem mRecenterButton;
+    private ImageButton recenterButton;
     private TextToSpeech mTextToSpeech;
     private boolean mIsTextToSpeechInitialized = false;
     private TextView directionLbl;
@@ -172,6 +172,9 @@ public class MapNavActivity extends AppCompatActivity {
         // Button centerButton = findViewById(R.id.centerButton);
         // centerButton.setOnClickListener(v -> startNavigation(routeTask, routeParameters, routeResult));
 
+        // Reference the center button
+        recenterButton = findViewById(R.id.centerButton);
+
     } // end onCreate
 
     private void initFontIcons(){
@@ -189,7 +192,8 @@ public class MapNavActivity extends AppCompatActivity {
 
     public void centerButtonClick(View view) {
         mMapView.getLocationDisplay().setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
-        mRecenterButton.setEnabled(false);
+        recenterButton.setEnabled(false);
+        // mRecenterButton.setEnabled(false);
     }
 
     public void directionsButtonClick(View view) {
@@ -199,18 +203,18 @@ public class MapNavActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 
-        if (item.getItemId() == R.id.toolbar_route) {
-            mMapView.getLocationDisplay().setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
-            mRecenterButton.setEnabled(false);
-            return true;
-        }
-        if (item.getItemId() == R.id.toolbar_directions) {
+        //if (item.getItemId() == R.id.toolbar_route) {
+        //    mMapView.getLocationDisplay().setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
+        //    mRecenterButton.setEnabled(false);
+        //    return true;
+        //}
+        //if (item.getItemId() == R.id.toolbar_directions) {
             //View view = item.getActionView();
             //if (view == null)
             //    return true;
             // display popup of directions
 
-            showSimpleAdapterAlertDialog();
+        //    showSimpleAdapterAlertDialog();
             /*
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             String[] directions = new String[mDirections.size()];
@@ -229,8 +233,8 @@ public class MapNavActivity extends AppCompatActivity {
             AlertDialog directionModal =  builder.create();
             directionModal.show();
             */
-            return true;
-        }
+        //    return true;
+        //}
 
         finish();
 
@@ -241,16 +245,16 @@ public class MapNavActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.nav_menu, menu);
-        mRecenterButton  = menu.findItem(R.id.toolbar_route);
-        FontDrawable drawable = new FontDrawable(this, R.string.fa_crosshairs_solid, true, false);
-        drawable.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        mRecenterButton.setIcon(drawable);
+        // mRecenterButton  = menu.findItem(R.id.toolbar_route);
+        // FontDrawable drawable = new FontDrawable(this, R.string.fa_crosshairs_solid, true, false);
+        // drawable.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+        // mRecenterButton.setIcon(drawable);
 
-        MenuItem dirMenuItem = menu.findItem(R.id.toolbar_directions);
+        // MenuItem dirMenuItem = menu.findItem(R.id.toolbar_directions);
         // fa_map_signs_solid
-        drawable = new FontDrawable(this, R.string.fa_directions_solid, true, false);
-        drawable.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        dirMenuItem.setIcon(drawable);
+        // drawable = new FontDrawable(this, R.string.fa_directions_solid, true, false);
+        // drawable.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+        // dirMenuItem.setIcon(drawable);
 
         return true;
         //return super.onCreateOptionsMenu(menu);
@@ -457,7 +461,9 @@ public class MapNavActivity extends AppCompatActivity {
         mLocationDisplay.setLocationDataSource(routeTrackerLocationDataSource);
 
         // if the user navigates the map view away from the location display, activate the recenter button
-        mLocationDisplay.addAutoPanModeChangedListener(autoPanModeChangedEvent -> mRecenterButton.setEnabled(true));
+        mLocationDisplay.addAutoPanModeChangedListener(autoPanModeChangedEvent -> {
+            recenterButton.setEnabled(true);
+        });
 
         mLocationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
 
