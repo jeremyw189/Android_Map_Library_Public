@@ -12,7 +12,8 @@
         android:layout_gravity="start"
         android:layout_marginStart="6dp"
         android:layout_marginEnd="6dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:contentDescription="@string/image_content"/>
 
     <TextView
         android:id="@+id/alertItemTextView"

@@ -20,7 +20,7 @@
     <string name="toolbar_route">Route</string>
     <string name="toolbar_direction">Directions</string>
     <string name="action_navigate">Go</string>
-    <string name="distance_remaining">Distance: %s %s</string>
+    <string name="distance_remaining"> %s %s</string>
     <string name="time_remaining">Time: %s</string>
     <string name="next_direction">%s</string>
     <string name="navigate_route">Navigate Route</string>
@@ -29,4 +29,5 @@
     <string name="reroute_supported">"Rerouting is enabled"</string>
     <string name="route_error">Error creating route!</string>
     <string name="route_result_error">Routing error!</string>
+    <string name="image_content">Direction Image</string>
 </resources>
