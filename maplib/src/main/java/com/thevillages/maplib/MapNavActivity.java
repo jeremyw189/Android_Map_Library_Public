@@ -41,12 +41,14 @@ import com.esri.arcgisruntime.ArcGISRuntimeEnvironment;
 import com.esri.arcgisruntime.UnitSystem;
 import com.esri.arcgisruntime.concurrent.ListenableFuture;
 import com.esri.arcgisruntime.geometry.Envelope;
+import com.esri.arcgisruntime.geometry.Geometry;
 import com.esri.arcgisruntime.geometry.Point;
 import com.esri.arcgisruntime.geometry.Polyline;
 import com.esri.arcgisruntime.geometry.SpatialReferences;
 import com.esri.arcgisruntime.io.RequestConfiguration;
 import com.esri.arcgisruntime.layers.ArcGISTiledLayer;
 import com.esri.arcgisruntime.loadable.LoadStatus;
+import com.esri.arcgisruntime.location.AndroidLocationDataSource;
 import com.esri.arcgisruntime.location.RouteTrackerLocationDataSource;
 import com.esri.arcgisruntime.location.SimulatedLocationDataSource;
 import com.esri.arcgisruntime.location.SimulationParameters;
@@ -350,12 +352,12 @@ public class MapNavActivity extends AppCompatActivity {
                                 directionLbl.setText(mDirections.get(1).getDirectionText());
 
                                 // PRODUCTION  set the map view view point to show the whole route
-                               //  mMapView.setViewpointAsync(new Viewpoint(routeGeometry.getExtent()));
-                               //  Button navigateRouteButton = findViewById(R.id.navigationButton);
-                               //  navigateRouteButton.setOnClickListener(v -> startNavigation(routeTask, routeParameters, routeResult, null ));
+                                //mMapView.setViewpointAsync(new Viewpoint(routeGeometry.getExtent()));
+                                // Button navigateRouteButton = findViewById(R.id.navigationButton);
+                                // navigateRouteButton.setOnClickListener(v -> startNavigation(routeTask, routeParameters, routeResult, null ));
 
                                 // TESTING SIMULATED ROUTE ONLY
-                                getSimulatedRoute(routeTask, routeResult, routeParameters );
+                               getSimulatedRoute(routeTask, routeResult, routeParameters );
 
                             } catch (ExecutionException | InterruptedException e) {
                                 String error =  "Error: " + e.getMessage() ;
@@ -408,13 +410,13 @@ public class MapNavActivity extends AppCompatActivity {
         }
 
         int layers = mMapView.getGraphicsOverlays().size();
-        if (layers > 1 )
-            mMapView.getGraphicsOverlays().remove(layers - 1);
+        //if (layers > 1 )
+        //    mMapView.getGraphicsOverlays().get(layers - 1).getGraphics().clear();
 
         mImNavigating = true;
         initFontIcons();
         // create a graphic (solid) to represent the route that's been traveled (initially empty)
-        mMapView.getGraphicsOverlays().get(0).getGraphics().clear();
+       mMapView.getGraphicsOverlays().get(0).getGraphics().clear();
 
         // get the route's geometry from the route result
         Polyline routeGeometry = routeResult.getRoutes().get(0).getRouteGeometry();
@@ -422,11 +424,12 @@ public class MapNavActivity extends AppCompatActivity {
         mRouteAheadGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.RED, 5f));
         mRouteTraveledGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.GREEN, 5f));
 
-        //GraphicsOverlay graphicsOverlay = new GraphicsOverlay();
+        GraphicsOverlay graphicsOverlay = new GraphicsOverlay();
         //graphicsOverlay.setOpacity((float)0.4);
         //mMapView.getGraphicsOverlays().add(graphicsOverlay);
-        //mMapView.getGraphicsOverlays().get(1).getGraphics().add(mRouteAheadGraphic);
-        //mMapView.getGraphicsOverlays().get(1).getGraphics().add(mRouteTraveledGraphic);
+        //int i = mMapView.getGraphicsOverlays().size();
+        //mMapView.getGraphicsOverlays().get(i - 1).getGraphics().add(mRouteAheadGraphic);
+       // mMapView.getGraphicsOverlays().get(i - 1).getGraphics().add(mRouteTraveledGraphic);
         mGraphicsOverlay.getGraphics().add(mRouteAheadGraphic);
         mGraphicsOverlay.getGraphics().add(mRouteTraveledGraphic);
 
@@ -444,15 +447,15 @@ public class MapNavActivity extends AppCompatActivity {
             // setup listener for rerouting
             directionLbl.setText("Rerouting supported");
             Toast.makeText(this, R.string.reroute_supported, Toast.LENGTH_LONG ).show();
-            //mRouteTracker.addRerouteStartedListener(rerouteStartedEvent ->  {
-            //    mRouteTracker.removeNewVoiceGuidanceListener(myNewVoiceGuidanceListener);
-            // mRouteTracker.removeTrackingStatusChangedListener(myTrackingStatusChangedListener);
-            //});
+//            mRouteTracker.addRerouteStartedListener(rerouteStartedEvent ->  {
+//                mRouteTracker.removeNewVoiceGuidanceListener(myNewVoiceGuidanceListener);
+//                mRouteTracker.removeTrackingStatusChangedListener(myTrackingStatusChangedListener);
+//            });
             mRouteTracker.addRerouteCompletedListener(rerouteCompletedEvent -> {
                 mDirections = rerouteCompletedEvent.getTrackingStatus().getRouteResult().getRoutes().get(0).getDirectionManeuvers();
-
+                directionLbl.setText("Rerouting!");
                //  mRouteTracker.addTrackingStatusChangedListener(getTrackingStatusChangedListener());
-               // mRouteTracker.addNewVoiceGuidanceListener(getNewVoiceGuidanceListener());
+               //  mRouteTracker.addNewVoiceGuidanceListener(getNewVoiceGuidanceListener());
             });
         }
 
@@ -482,6 +485,7 @@ public class MapNavActivity extends AppCompatActivity {
 
         //mRouteTracker.addTrackingStatusChangedListener(getTrackingStatusChangedListener());
         mLocationDisplay.addLocationChangedListener(locationChangedEvent -> {
+           // mRouteTracker.trackLocationAsync(locationChangedEvent.getLocation());
 
             TrackingStatus trackingStatus = mRouteTracker.getTrackingStatus();
             // set geometries for the route ahead and the remaining route
@@ -543,9 +547,12 @@ public class MapNavActivity extends AppCompatActivity {
 
                         RouteResult routeResult_ = routeResultFuture_.get();
                         Polyline routeGeometry_ = routeResult_.getRoutes().get(0).getRouteGeometry();
-                        Graphic routeGraphic_ = new Graphic(routeGeometry_, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.BLUE, 5f));
+                        Graphic routeGraphic_ = new Graphic(routeGeometry_, new SimpleLineSymbol(SimpleLineSymbol.Style.DASH, Color.BLUE, 5f));
 
-                        mGraphicsOverlay.getGraphics().add(routeGraphic_);
+                        GraphicsOverlay go = new GraphicsOverlay();
+                        mMapView.getGraphicsOverlays().add(go);
+                        go.getGraphics().add(routeGraphic_);
+                        //mGraphicsOverlay.getGraphics().add(routeGraphic_);
 
                         Polyline routeGeometry = routeResult.getRoutes().get(0).getRouteGeometry();
                         Graphic routeGraphic = new Graphic(routeGeometry, new SimpleLineSymbol(SimpleLineSymbol.Style.SOLID, Color.RED, 5f));
@@ -570,7 +577,7 @@ public class MapNavActivity extends AppCompatActivity {
     }
 
     // not used
-    /*
+
     private RouteTracker.TrackingStatusChangedListener getTrackingStatusChangedListener() {
         myTrackingStatusChangedListener = new RouteTracker.TrackingStatusChangedListener() {
             @Override
@@ -580,8 +587,8 @@ public class MapNavActivity extends AppCompatActivity {
 
                 // set geometries for the route ahead and the remaining route
                 mRouteAheadGraphic.setGeometry(trackingStatus.getRouteProgress().getRemainingGeometry());
-                //Geometry traversed = trackingStatus.getRouteProgress().getRemainingGeometry();
-                //mRouteTraveledGraphic.setGeometry(traversed);
+                Geometry traversed = trackingStatus.getRouteProgress().getTraversedGeometry();
+                mRouteTraveledGraphic.setGeometry(traversed);
 
                 // get remaining distance information
                 TrackingStatus.Distance remainingDistance = trackingStatus.getDestinationProgress().getRemainingDistance();
@@ -614,7 +621,7 @@ public class MapNavActivity extends AppCompatActivity {
         };
 
         return myTrackingStatusChangedListener;
-    } */
+    }
 
     // listener
     private RouteTracker.NewVoiceGuidanceListener getNewVoiceGuidanceListener () {
@@ -624,10 +631,17 @@ public class MapNavActivity extends AppCompatActivity {
             public void onNewVoiceGuidance(RouteTracker.NewVoiceGuidanceEvent newVoiceGuidanceEvent) {
                 // use Android's text to speech to speak the voice guidance
                 String txt = newVoiceGuidanceEvent.getVoiceGuidance().getText();
-                Log.d(TAG, "startNavigation: " + txt);
+                Log.d(TAG, "Voice command: " + txt);
+                if (txt.isEmpty())
+                    return;
                 speakVoiceGuidance(txt);
-                directionLbl.setText(getString(R.string.next_direction, txt));
-                turnImage.setImageResource(getDirectionDrawable(txt));
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        directionLbl.setText(getString(R.string.next_direction, txt));
+                        turnImage.setImageResource(getDirectionDrawable(txt));
+                    }
+                });
             }
         };
         return myNewVoiceGuidanceListener;
